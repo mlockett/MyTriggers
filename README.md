@@ -4,6 +4,8 @@
     of developing, but it allows for a more incremental approach to refactoring, and 
     minimizes effort when the additional flexibility offered by MyTriggers is less important.
 
+    Any handler using "All" will execute after all other configured trigger handlers. I might change this later.
+
   Lightweight Custom Metadata driven Trigger Framework that scales to your needs. Extended from [TriggerX](https://github.com/se6wagner/TriggerX) by Seb Wagner, provided with <3 by appero.com
 
 ## Installation
