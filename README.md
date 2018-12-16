@@ -16,7 +16,7 @@
 Clone this repo
 
 ```
-git clone https://github.com/appero-com/MyTriggers
+git clone https://github.com/mlockett/MyTriggers
 ```
 
 Create a scratch org and push source 
@@ -32,7 +32,7 @@ sfdx force:source:convert -r MyTriggers/framework -d src && sfdx force:mdapi:dep
 
 
 ## Resources
-
+[MyTriggers by appero-com](https://github.com/appero-com/MyTriggers)
 [TriggerX by Sebastian Wagner](https://github.com/se6wagner/TriggerX)
 
 
