@@ -9,36 +9,36 @@
 * @created: 8-2018
 * @author: info@appero.com
 *
-* @Description Leightweight Custom Metadata driven Trigger Framework that scales to your needs. Provided with <3 by appero.com
+* @Description Lightweight Custom Metadata driven Trigger Framework that scales to your needs. Provided with <3 by appero.com
 */
 public class JSONObject {
     public class JSONObjectException extends Exception {}
 
-    public static String NAMESPACEPREFIX {
+    public static String NameSpacePrefix {
         get {
-            if (namespacePrefix == null) {
-                namespacePrefix = JSONObject.class.getName().substringBefore('.JSONObject');
-                namespacePrefix = namespacePrefix.length() > 0 && namespacePrefix != 'JSONObject' ? namespacePrefix + '__' : '';
+            if (NameSpacePrefix == null) {
+                NameSpacePrefix = JSONObject.class.getName().substringBefore('.JSONObject');
+                NameSpacePrefix = NameSpacePrefix.length() > 0 && NameSpacePrefix != 'JSONObject' ? NameSpacePrefix + '__' : '';
             }
-            return namespacePrefix;
+            return NameSpacePrefix;
         }
         private set;
     }
     
-    @testvisible
+    @TestVisible
     private Map<String,Object> propertyMap = new Map<String,Object>(); 
     
     public JSONObject(String singleObjectJSON) {
         try {
             JSON.deserializeUntyped(singleObjectJSON);
-        } catch (exception e) {
-            throw new JSONOBjectException('This is not a valid JSON String.');
+        } catch (Exception e) {
+            throw new JSONObjectException('This is not a valid JSON String.');
         }
         
         try {
             propertyMap = (Map<String,Object>)JSON.deserializeUntyped(singleObjectJSON);
-        } catch (exception e) {
-            throw new JSONOBjectException('A single JSON Object is expected. The JSON String contains a list of Objects.');
+        } catch (Exception e) {
+            throw new JSONObjectException('A single JSON Object is expected. The JSON String contains a list of Objects.');
         }
     }
     
@@ -60,7 +60,7 @@ public class JSONObject {
 
     public void set(String propertyName, Object value, Boolean appendNamespace) {
         if(appendNamespace){
-            propertyName = NAMESPACEPREFIX + propertyName;
+            propertyName = NameSpacePrefix + propertyName;
         }
         propertyMap.put(propertyName, value);
     }
@@ -69,12 +69,12 @@ public class JSONObject {
         return JSON.deserializeStrict(toJSON(), apexType);
     }
     
-    @testVisible
+    @TestVisible
     private String toJSON() {
         return JSON.serialize(propertyMap);
     }
 
-    @testVisible
+    @TestVisible
     private static Boolean hasProperty(String json, String propertyName) {
         return json.contains(propertyName);
     }

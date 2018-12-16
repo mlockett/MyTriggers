@@ -9,47 +9,47 @@
 * @created: 8-2018
 * @author: info@appero.com
 *
-* @Description Leightweight Custom Metadata driven Trigger Framework that scales to your needs. Provided with <3 by appero.com
+* @Description Lightweight Custom Metadata driven Trigger Framework that scales to your needs.
+* Provided with <3 by appero.com
+*
+* YL edits include assigning a class to "All" trigger event
+* "All" does not control recursion, and will fire after event-specific Triggers
 */
 
 
 global virtual class MyTriggers {
 
-    global class myTriggersException extends Exception {}
+    // YL's new event type
+    private static final String ALL_EVENTS = 'All';
+
+    global class MyTriggersException extends Exception {
+    }
 
     @TestVisible
     private static List<MyTriggerSetting__mdt> triggerHandlerSettingMocks;
 
     @TestVisible
-    private static sObjectType sObjectTypeMock;
+    private static SObjectType sObjectTypeMock;
 
     @TestVisible
     private static String triggerEventMock;
 
-	/**
-     * cast records to appropriate sObjectType in implementations
+    /**
+     * cast records to appropriate SObjectType in implementations
      */
-    global sObject[] records;
+    global SObject[] Records { get; set; }
 
     /**
-     * Global Constructor reserved for future use
-     * 
-     */
-    global myTriggers(){
-        //empty
-    }
-
-    /**
-     * used instead of constructor since handlers are instanciated with an empty contructor
-     * @param  records Array of sObjects. for INSERT & UPDATE Trigger.new otherwise Trigger.old
+     * used instead of constructor since handlers are instantiated with an empty constructor
+     * @param  records Array of SObjects. for INSERT & UPDATE Trigger.new otherwise Trigger.old
      * @return         instance
      */
-    global virtual myTriggers doConstruct(sObject[] records){
+    global virtual MyTriggers doConstruct(SObject[] records) {
 
-    	this.records = records;
+        this.Records = records;
         return this;
     }
-	
+
     //--------------------------------------------------------------
     // implementable Handlers
     //--------------------------------------------------------------
@@ -57,39 +57,46 @@ global virtual class MyTriggers {
     /**
      * executed to perform BEFORE_INSERT operations
      */
-    global virtual void onBeforeInsert(){}
+    global virtual void onBeforeInsert() {
+    }
 
     /**
      * executed to perform AFTER_INSERT operations
      */
-    global virtual void onAfterInsert(){}
+    global virtual void onAfterInsert() {
+    }
 
     /**
      * executed to perform BEFORE_UPDATE operations
-     * @param  triggerOldMap 
+     * @param  triggerOldMap
      */
-    global virtual void onBeforeUpdate(Map<Id,sObject> triggerOldMap){}
-    
+    global virtual void onBeforeUpdate(Map<Id, SObject> triggerOldMap) {
+    }
+
     /**
      * executed to perform AFTER_UPDATE operations
-     * @param  triggerOldMap 
+     * @param  triggerOldMap
      */
-    global virtual void onAfterUpdate(Map<Id,sObject> triggerOldMap){}
-    
+    global virtual void onAfterUpdate(Map<Id, SObject> triggerOldMap) {
+    }
+
     /**
      * executed to perform BEFORE_DELETE operations
      */
-    global virtual void onBeforeDelete(){}
+    global virtual void onBeforeDelete() {
+    }
 
     /**
      * executed to perform AFTER_DELETE operations
      */
-    global virtual void onAfterDelete(){}
+    global virtual void onAfterDelete() {
+    }
 
     /**
      * executed to perform AFTER_UNDELETE operations
      */
-    global virtual void onAfterUndelete(){}
+    global virtual void onAfterUndelete() {
+    }
 
     //--------------------------------------------------------------
     // General Handling
@@ -97,29 +104,38 @@ global virtual class MyTriggers {
 
 
     /**
-     * Entry point of myTriggers framework - called from implementations
+     * Entry point of MyTriggers framework - called from implementations
      */
-    global static void run(){
+    global static void run() {
 
         SObjectType currentSObjectType;
         if (Test.isRunningTest() && sObjectTypeMock != null) {
             currentSObjectType = sObjectTypeMock;
         } else {
-            currentSObjectType = Trigger.new != null ? Trigger.new.getSObjectType() : Trigger.old.getSObjectType();
+            currentSObjectType = Trigger.new != null
+                    ? Trigger.new.getSObjectType()
+                    : Trigger.old.getSObjectType();
         }
 
         if (currentSObjectType != executionContextSObjectType) {
             setTriggerHandlerMaps(currentSObjectType);
         }
         executionContextSObjectType = currentSObjectType;
-        
+
         if (triggerEventsToTriggerHandlers == null || triggerEventsToTriggerHandlers.isEmpty()) {
             return;
         }
 
         String eventString = Test.isRunningTest() && triggerEventMock != null ? triggerEventMock : Trigger.operationType.name();
-        
+
         List<MyTriggerSetting__mdt> triggerHandlerSettings = triggerEventsToTriggerHandlers.get(eventString);
+
+        // YL's first attempt at an 'All' event ***************
+        if (triggerHandlerSettings == null) {
+            triggerHandlerSettings = new List<MyTriggerSetting__mdt>();
+        }
+        triggerHandlerSettings.addAll(triggerEventsToTriggerHandlers.get(ALL_EVENTS));
+        // end YL's first attempt at an 'All' event ***************
 
         if (triggerHandlerSettings == null) {
             return;
@@ -130,46 +146,45 @@ global virtual class MyTriggers {
             run(handlerType);
         }
     }
-	
-	
+
     //--------------------------------------------------------------
     // Methods to track updated records or if a record has changed fields
     //--------------------------------------------------------------
-	
-    static Set<Id> alreadyUpdatedIds = new Set<Id>(); 
- 
+
+    static Set<Id> alreadyUpdatedIds = new Set<Id>();
+
     /**
      * add set of ids to updatedIds
-     * @param  idSet usally Trigger.newMap.keyset()
+     * @param  idSet usually Trigger.newMap.keyset()
      */
-    global static void addUpdatedIds(Set<Id> idSet){
-        alreadyUpdatedIds.addAll(idSet);    
+    global static void addUpdatedIds(Set<Id> idSet) {
+        alreadyUpdatedIds.addAll(idSet);
     }
 
-    
+
     /**
      * return all updated ids
      * @return   set of updated/already touched Ids
      */
-    global static Set<Id> getUpdatedIds(){
-    	return alreadyUpdatedIds;
+    global static Set<Id> getUpdatedIds() {
+        return alreadyUpdatedIds;
     }
 
-	
-	 /**
-     * returns a list of objects that have not been processed yet
-     * @return           records[] not yet processed
-     */
-	global protected sObject[] getRecordsNotYetProcessed(){
 
-        Set<Id> updatedIds = myTriggers.getUpdatedIds();
-        sObject[] recordsNotYetProcessed  = records.clone();
+    /**
+    * returns a list of objects that have not been processed yet
+    * @return           records[] not yet processed
+    */
+    global protected SObject[] getRecordsNotYetProcessed() {
+
+        Set<Id> updatedIds = MyTriggers.getUpdatedIds();
+        SObject[] recordsNotYetProcessed = Records.clone();
         recordsNotYetProcessed.clear();
 
-        for (sObject record : records) {
-        	if (!updatedIds.contains((Id)record.get('Id'))) {
-        		recordsNotYetProcessed.add(record);
-        	}
+        for (SObject record : Records) {
+            if (!updatedIds.contains((Id) record.get('Id'))) {
+                recordsNotYetProcessed.add(record);
+            }
         }
 
         return recordsNotYetProcessed;
@@ -177,11 +192,11 @@ global virtual class MyTriggers {
 
     /**
      * returns true if a value of one of the specified fields has changed
-     * @param  fieldList 
-     * @param  record    
-     * @param  recordOld 
+     * @param  fieldList
+     * @param  record
+     * @param  recordOld
      */
-    global static Boolean hasChangedFields(String[] fieldList, sObject record, sObject recordOld){
+    global static Boolean hasChangedFields(String[] fieldList, SObject record, SObject recordOld) {
         for (String field : fieldList) {
             if (record.get(field) != recordOld.get(field)) {
                 return true;
@@ -189,15 +204,15 @@ global virtual class MyTriggers {
         }
         return false;
     }
- 
+
     /**
      * returns true if a value of one of the specified fields has changed
      * @param  fieldList
-     * @param  record    
-     * @param  recordOld 
+     * @param  record
+     * @param  recordOld
      */
-    global static Boolean hasChangedFields(sObjectField[] fieldList, sObject record, sObject recordOld){
-        for (sObjectField field : fieldList) {
+    global static Boolean hasChangedFields(SObjectField[] fieldList, SObject record, SObject recordOld) {
+        for (SObjectField field : fieldList) {
             if (record.get(field) != recordOld.get(field)) {
                 return true;
             }
@@ -211,10 +226,11 @@ global virtual class MyTriggers {
      * @param  record
      * @param  recordOld
      */
-    global static String[] getChangedFields(String[] fieldList, sObject record, sObject recordOld){
-        String[] changedFieldNames = new String[]{};
+    global static String[] getChangedFields(String[] fieldList, SObject record, SObject recordOld) {
+        String[] changedFieldNames = new String[]{
+        };
 
-        for (String field:fieldList) {
+        for (String field : fieldList) {
             if (record.get(field) != recordOld.get(field)) {
                 changedFieldNames.add(field);
             }
@@ -223,17 +239,21 @@ global virtual class MyTriggers {
         return changedFieldNames;
     }
 
-     
+
     /**
      * returns a list of changed fields based on provided fieldList list
      * @param  fieldList
      * @param  record
      * @param  recordOld
      */
-    global static sObjectField[] getChangedFields(sObjectField[] fieldList, sObject record, sObject recordOld){
-        sObjectField[] changedFields = new sObjectField[]{};
+    global static SObjectField[] getChangedFields(
+            SObjectField[] fieldList,
+            SObject record,
+            SObject recordOld) {
+        SObjectField[] changedFields = new SObjectField[]{
+        };
 
-        for (sObjectField field:fieldList) {
+        for (SObjectField field : fieldList) {
             if (record.get(field) != recordOld.get(field)) {
                 changedFields.add(field);
             }
@@ -241,32 +261,42 @@ global virtual class MyTriggers {
 
         return changedFields;
     }
-	
-	//--------------------------------------------------------------
-    // EVENT Control for advanced use cases 
+
+    //--------------------------------------------------------------
+    // EVENT Control for advanced use cases
     //--------------------------------------------------------------
 
-    static Map<Type,Set<String>> classNameToDisabledTriggerEventsMap = new Map<Type,Set<String>>();
+    static Map<Type, Set<String>> classNameToDisabledTriggerEventsMap = new Map<Type, Set<String>>();
 
-    static Set<Type> alreadyCheckedClasses = new Set<Type>(); 
+    static Set<Type> alreadyCheckedClasses = new Set<Type>();
 
-	
+
     /**
      * loads trigger event settings MyTriggerSetting__mdt
      * @param  triggerHandlerType
-     * @param  forceInit            force reload of event settings 
+     * @param  forceInit            force reload of event settings
      */
-    global static void setAllowedTriggerEvents(Type triggerHandlerType, Boolean forceInit){
+    global static void setAllowedTriggerEvents(Type triggerHandlerType, Boolean forceInit) {
         if (alreadyCheckedClasses.contains(triggerHandlerType) && !forceInit) {
             return;
-        }        
+        }
         Set<String> events = getDisabledEvents(triggerHandlerType);
         Set<String> enabledEventsInSettings = new Set<String>();
         String classNameWithNamespace = triggerHandlerType.getName().toUpperCase();
 
-        if (handlerClassesToTriggerHandlers!= null && handlerClassesToTriggerHandlers.containsKey(classNameWithNamespace)) {
+        if (handlerClassesToTriggerHandlers != null && handlerClassesToTriggerHandlers.containsKey(classNameWithNamespace)) {
             for (MyTriggerSetting__mdt handlerSetting : handlerClassesToTriggerHandlers.get(classNameWithNamespace)) {
-                enabledEventsInSettings.add(handlerSetting.Event__c);
+
+                // YL addition
+                if(handlerSetting.Event__c == ALL_EVENTS){
+
+                    for(System.TriggerOperation triggerOp : System.TriggerOperation.values()){
+                        enabledEventsInSettings.add(triggerOp.name());
+                    }
+                }
+                else{
+                    enabledEventsInSettings.add(handlerSetting.Event__c);
+                }
             }
         }
 
@@ -275,7 +305,7 @@ global virtual class MyTriggers {
                 events.add(op.name());
             }
         }
-        
+
         alreadyCheckedClasses.add(triggerHandlerType);
     }
 
@@ -286,7 +316,7 @@ global virtual class MyTriggers {
      * @param  className
      * @param  forceInit
      */
-    global static void setAllowedTriggerEvents(String namespacePrefix, String className, Boolean forceInit){
+    global static void setAllowedTriggerEvents(String namespacePrefix, String className, Boolean forceInit) {
         Type triggerHandlerType = getTriggerHandlerType(namespacePrefix, className);
         setAllowedTriggerEvents(triggerHandlerType, forceInit);
     }
@@ -294,12 +324,12 @@ global virtual class MyTriggers {
     /**
      * returns set of disabled events
      * @param  className
-     * @return           Set of disabled Event Namens (e.g. 'AFTER_UPDATE')
+     * @return           Set of disabled Event Names (e.g. 'AFTER_UPDATE')
      */
-    global static Set<String> getDisabledEvents(Type className){
+    global static Set<String> getDisabledEvents(Type className) {
 
         if (!classNameToDisabledTriggerEventsMap.containsKey(className)) {
-            classNameToDisabledTriggerEventsMap.put(className,new Set<String>());
+            classNameToDisabledTriggerEventsMap.put(className, new Set<String>());
         }
         return classNameToDisabledTriggerEventsMap.get(className);
     }
@@ -311,7 +341,7 @@ global virtual class MyTriggers {
      * @param  className
      * @return                 Set<String>
      */
-    global static Set<String> getDisabledEvents(String namespacePrefix, String className){
+    global static Set<String> getDisabledEvents(String namespacePrefix, String className) {
         Type triggerHandlerType = getTriggerHandlerType(namespacePrefix, className);
         return getDisabledEvents(triggerHandlerType);
     }
@@ -319,10 +349,10 @@ global virtual class MyTriggers {
     /**
      * returns true if the specified event is disabled
      * @param  className className String
-     * @param  event     event System.TriggerOperation 
+     * @param  event     event System.TriggerOperation
      * @return           Boolean
      */
-    global static Boolean isDisabled(Type className, System.TriggerOperation event){
+    global static Boolean isDisabled(Type className, System.TriggerOperation event) {
         return getDisabledEvents(className).contains(event.name());
     }
 
@@ -333,7 +363,7 @@ global virtual class MyTriggers {
      * @param  className
      * @param  event
      */
-    global static Boolean isDisabled(String namespacePrefix, String className, System.TriggerOperation event){
+    global static Boolean isDisabled(String namespacePrefix, String className, System.TriggerOperation event) {
         Type triggerHandlerType = getTriggerHandlerType(namespacePrefix, className);
         return isDisabled(triggerHandlerType, event);
     }
@@ -342,50 +372,58 @@ global virtual class MyTriggers {
      * getInsertEvents all insert events
      * @return   System.TriggerOperation[]
      */
-    global static System.TriggerOperation[] getInsertEvents(){
-        return new System.TriggerOperation[]{System.TriggerOperation.BEFORE_INSERT,
-											 System.TriggerOperation.AFTER_INSERT};
+    global static System.TriggerOperation[] getInsertEvents() {
+        return new System.TriggerOperation[]{
+                System.TriggerOperation.BEFORE_INSERT,
+                System.TriggerOperation.AFTER_INSERT
+        };
     }
 
     /**
      * get all upadte Events
      * @return   all update events
      */
-    global static System.TriggerOperation[] getUpdateEvents(){
-        return new System.TriggerOperation[]{System.TriggerOperation.BEFORE_UPDATE,
-			                                 System.TriggerOperation.AFTER_UPDATE};
+    global static System.TriggerOperation[] getUpdateEvents() {
+        return new System.TriggerOperation[]{
+                System.TriggerOperation.BEFORE_UPDATE,
+                System.TriggerOperation.AFTER_UPDATE
+        };
     }
 
     /**
      * getDeleteEvents all delete events
      * @return   all delete events
      */
-    global static System.TriggerOperation[] getDeleteEvents(){
+    global static System.TriggerOperation[] getDeleteEvents() {
         return new System.TriggerOperation[]{
-              System.TriggerOperation.BEFORE_DELETE
-            , System.TriggerOperation.AFTER_DELETE};
+                System.TriggerOperation.BEFORE_DELETE
+                , System.TriggerOperation.AFTER_DELETE
+        };
     }
 
     /**
      * list of all BEFORE System.TriggerOperation enums
      * @return   all before events
      */
-    global static System.TriggerOperation[] getBeforeEvents(){
+    global static System.TriggerOperation[] getBeforeEvents() {
         return new System.TriggerOperation[]{
-        	  System.TriggerOperation.BEFORE_INSERT
-        	, System.TriggerOperation.BEFORE_UPDATE
-        	, System.TriggerOperation.BEFORE_DELETE};
+                System.TriggerOperation.BEFORE_INSERT
+                , System.TriggerOperation.BEFORE_UPDATE
+                , System.TriggerOperation.BEFORE_DELETE
+        };
     }
- 
+
     /**
      * list of all AFTER System.TriggerOperation enums
      * @return   all after events
      */
-    global static System.TriggerOperation[] getAfterEvents(){
-        return new System.TriggerOperation[]{System.TriggerOperation.AFTER_INSERT,
-		                                     System.TriggerOperation.AFTER_UPDATE, 
-											 System.TriggerOperation.AFTER_DELETE, 
-											 System.TriggerOperation.AFTER_UNDELETE};
+    global static System.TriggerOperation[] getAfterEvents() {
+        return new System.TriggerOperation[]{
+                System.TriggerOperation.AFTER_INSERT,
+                System.TriggerOperation.AFTER_UPDATE,
+                System.TriggerOperation.AFTER_DELETE,
+                System.TriggerOperation.AFTER_UNDELETE
+        };
     }
 
 
@@ -393,13 +431,14 @@ global virtual class MyTriggers {
      * disables all events for System.Type MyClass
      * @param  myClass
      */
-    global static void disable(Type MyClass){
+    global static void disable(Type MyClass) {
 
-        System.TriggerOperation[] allEvents = new System.TriggerOperation[]{};
+        System.TriggerOperation[] allEvents = new System.TriggerOperation[]{
+        };
         allEvents.addAll(getBeforeEvents());
         allEvents.addAll(getAfterEvents());
 
-        disable(MyClass,allEvents);
+        disable(MyClass, allEvents);
     }
 
     /**
@@ -408,20 +447,21 @@ global virtual class MyTriggers {
      * @param  namespacePrefix
      * @param  className
      */
-    global static void disable(String namespacePrefix, String className){
-        
-        System.TriggerOperation[] allEvents = new System.TriggerOperation[]{};
+    global static void disable(String namespacePrefix, String className) {
+
+        System.TriggerOperation[] allEvents = new System.TriggerOperation[]{
+        };
         allEvents.addAll(getBeforeEvents());
         allEvents.addAll(getAfterEvents());
 
-        disable(namespacePrefix,className,allEvents);
+        disable(namespacePrefix, className, allEvents);
     }
 
     /**
      * removes all disabled events for the System.Type MyClass
      * @param  MyClass
      */
-    global static void enable(Type MyClass){
+    global static void enable(Type MyClass) {
         getDisabledEvents(MyClass).clear();
     }
 
@@ -431,48 +471,48 @@ global virtual class MyTriggers {
      * @param  namespacePrefix String
      * @param  className       String
      */
-    global static void enable(String namespacePrefix, String className){
+    global static void enable(String namespacePrefix, String className) {
         Type triggerHandlerType = getTriggerHandlerType(namespacePrefix, className);
         enable(triggerHandlerType);
     }
 
     /**
-     * disable disable all specificed events for the System.Type MyClass
+     * disable disable all specified events for the System.Type MyClass
      * @param  MyClass
      * @param  events
      */
-    global static void disable(Type MyClass, System.TriggerOperation[] events){
+    global static void disable(Type MyClass, System.TriggerOperation[] events) {
         getDisabledEvents(MyClass).addAll(toStringEvents(events));
     }
 
     /**
-     * disable all specificed events for given ClassName and Namespace
+     * disable all specified events for given ClassName and Namespace
      * Also works in subscriber org with packaged public trigger handlers implementing MyTriggers
      * @param  namespacePrefix
      * @param  className
      * @param  events
      */
-    global static void disable(String namespacePrefix, String className, System.TriggerOperation[] events){
+    global static void disable(String namespacePrefix, String className, System.TriggerOperation[] events) {
         getDisabledEvents(namespacePrefix, className).addAll(toStringEvents(events));
     }
 
     /**
-     * enable all specificed events for the System.Type MyClass
+     * enable all specified events for the System.Type MyClass
      * @param  MyClass
      * @param  events
      */
-    global static void enable(Type MyClass, System.TriggerOperation[] events){
+    global static void enable(Type MyClass, System.TriggerOperation[] events) {
         getDisabledEvents(MyClass).removeAll(toStringEvents(events));
     }
 
     /**
-     * enable all specificed events for given ClassName and Namespace
+     * enable all specified events for given ClassName and Namespace
      * Also works in subscriber org with packaged public trigger handlers implementing MyTriggers
      * @param  namespacePrefix
      * @param  className
      * @param  events
      */
-    global static void enable(String namespacePrefix, String className, System.TriggerOperation[] events){
+    global static void enable(String namespacePrefix, String className, System.TriggerOperation[] events) {
         Type triggerHandlerType = getTriggerHandlerType(namespacePrefix, className);
         enable(triggerHandlerType, events);
     }
@@ -482,7 +522,7 @@ global virtual class MyTriggers {
      * @param  MyClass
      * @param  event
      */
-    global static void disable(Type MyClass, System.TriggerOperation event){
+    global static void disable(Type MyClass, System.TriggerOperation event) {
         getDisabledEvents(MyClass).add(event.name());
     }
 
@@ -493,7 +533,7 @@ global virtual class MyTriggers {
      * @param  className
      * @param  event
      */
-    global static void disable(String namespacePrefix, String className, System.TriggerOperation event){
+    global static void disable(String namespacePrefix, String className, System.TriggerOperation event) {
         getDisabledEvents(namespacePrefix, className).add(event.name());
     }
 
@@ -502,7 +542,7 @@ global virtual class MyTriggers {
      * @param  MyClass
      * @param  event
      */
-    global static void enable(Type MyClass, System.TriggerOperation event){
+    global static void enable(Type MyClass, System.TriggerOperation event) {
         getDisabledEvents(MyClass).remove(event.name());
     }
 
@@ -513,24 +553,24 @@ global virtual class MyTriggers {
      * @param  className
      * @param  event
      */
-    global static void enable(String namespacePrefix, String className, System.TriggerOperation event){
+    global static void enable(String namespacePrefix, String className, System.TriggerOperation event) {
         Type triggerHandlerType = getTriggerHandlerType(namespacePrefix, className);
         enable(triggerHandlerType, event);
     }
- 
+
     /**
      * converts a Set of Event enums into Strings
      * @param  events
      * @return        Names of Enums
      */
-    global static Set<String> toStringEvents(System.TriggerOperation[] events){
+    global static Set<String> toStringEvents(System.TriggerOperation[] events) {
         Set<String> output = new Set<String>();
-        for (System.TriggerOperation e:events) {
-        	output.add(e.name());
+        for (System.TriggerOperation e : events) {
+            output.add(e.name());
         }
-        return output;        
+        return output;
     }
-	
+
     //--------------------------------------------------------------
     // TRIGGER FRAMEWORK
     //--------------------------------------------------------------
@@ -538,27 +578,25 @@ global virtual class MyTriggers {
     @TestVisible
     private static SObjectType executionContextSObjectType;
 
-    private static Set<String> namespacePrefixes;
-
     private static Map<String, List<MyTriggerSetting__mdt>> triggerEventsToTriggerHandlers;
 
     private static Map<String, List<MyTriggerSetting__mdt>> handlerClassesToTriggerHandlers;
-      
+
     /**
-     * instanciates the applicable Trigger Handler object and passes it with Trigger context to run()
+     * instantiates the applicable Trigger Handler object and passes it with Trigger context to run()
      * @param  handlerType
      */
-    @testVisible
-    private static void run(Type handlerType){
-        run((myTriggers)handlerType.newInstance(), 
-			  handlerType,
-			  Trigger.isBefore,
-			  Trigger.isInsert,
-              Trigger.IsUpdate,
-              Trigger.isDelete,
-              Trigger.isUndelete,
-              Trigger.new,
-              Trigger.oldMap);
+    @TestVisible
+    private static void run(Type handlerType) {
+        run((MyTriggers) handlerType.newInstance(),
+                handlerType,
+                Trigger.isBefore,
+                Trigger.isInsert,
+                Trigger.isUpdate,
+                Trigger.isDelete,
+                Trigger.isUndelete,
+                Trigger.new,
+                Trigger.oldMap);
     }
 
     /**
@@ -571,35 +609,30 @@ global virtual class MyTriggers {
      * @param  isDelete
      * @param  isUndelete
      * @param  triggerNew
-     * @param  triggerOldMap 
+     * @param  triggerOldMap
      */
-    @testVisible
-    private static void run(myTriggers handler, Type handlerType, Boolean isBefore, Boolean isInsert, Boolean isUpdate, Boolean isDelete, Boolean isUndelete, sObject[] triggerNew, Map<Id,sObject> triggerOldMap){
-		setAllowedTriggerEvents(handlerType,false);
+    @TestVisible
+    private static void run(MyTriggers handler, Type handlerType, Boolean isBefore, Boolean isInsert, Boolean isUpdate, Boolean isDelete, Boolean isUndelete, SObject[] triggerNew, Map<Id, SObject> triggerOldMap) {
+        setAllowedTriggerEvents(handlerType, false);
 
         Set<String> disabledTriggerEvents = getDisabledEvents(handlerType);
+
         if (isBefore) {
             if (isInsert && !disabledTriggerEvents.contains(System.TriggerOperation.BEFORE_INSERT.name())) {
-                handler.doConstruct(triggerNew).onBeforeInsert(); 
-            }
-            else if (isUpdate && !disabledTriggerEvents.contains(System.TriggerOperation.BEFORE_UPDATE.name())) {
-                 handler.doConstruct(triggerNew).onBeforeUpdate(triggerOldMap);
-            }
-            else if (isDelete && !disabledTriggerEvents.contains(System.TriggerOperation.BEFORE_DELETE.name())) {
-                 handler.doConstruct(triggerOldMap.values()).onBeforeDelete();
+                handler.doConstruct(triggerNew).onBeforeInsert();
+            } else if (isUpdate && !disabledTriggerEvents.contains(System.TriggerOperation.BEFORE_UPDATE.name())) {
+                handler.doConstruct(triggerNew).onBeforeUpdate(triggerOldMap);
+            } else if (isDelete && !disabledTriggerEvents.contains(System.TriggerOperation.BEFORE_DELETE.name())) {
+                handler.doConstruct(triggerOldMap.values()).onBeforeDelete();
             }
         } else {
             if (isInsert && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_INSERT.name())) {
                 handler.doConstruct(triggerNew).onAfterInsert();
-            } 
-            else if (isUpdate && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_UPDATE.name())) {
-                system.debug('On After Handler: ' + handler);
+            } else if (isUpdate && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_UPDATE.name())) {
                 handler.doConstruct(triggerNew).onAfterUpdate(triggerOldMap);
-            }
-            else if (isDelete && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_DELETE.name())) {
+            } else if (isDelete && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_DELETE.name())) {
                 handler.doConstruct(triggerOldMap.values()).onAfterDelete();
-            }
-            else if (isUndelete && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_UNDELETE.name())) {
+            } else if (isUndelete && !disabledTriggerEvents.contains(System.TriggerOperation.AFTER_UNDELETE.name())) {
                 handler.doConstruct(triggerNew).onAfterUndelete();
             }
         }
@@ -611,8 +644,8 @@ global virtual class MyTriggers {
      * @param  namespacePrefixes
      * @return handlerType
      */
-    @testVisible
-    private static Type getTriggerHandlerType(String namespacePrefix, String className){
+    @TestVisible
+    private static Type getTriggerHandlerType(String namespacePrefix, String className) {
         namespacePrefix = namespacePrefix == null ? '' : namespacePrefix;
         Type handlerType = Type.forName(namespacePrefix, className);
 
@@ -621,17 +654,17 @@ global virtual class MyTriggers {
             handlerType = Type.forName('', className);
         }
         if (handlerType == null) {
-            throw new myTriggersException(Label.Errors_CannotFindTriggerHandlerClass + ':' + (namespacePrefix == null ? '' : namespacePrefix + '.') + className);
+            throw new MyTriggersException(Label.Errors_CannotFindTriggerHandlerClass + ':' + (namespacePrefix == null ? '' : namespacePrefix + '.') + className);
         }
         return handlerType;
     }
-    
+
     /**
-     * Set maps containing triggerHandlerSetting records for given sObjectType
+     * Set maps containing triggerHandlerSetting records for given SObjectType
      * @param  objectType SobjectType
      */
     @TestVisible
-    private static void setTriggerHandlerMaps(sObjectType objectType) {
+    private static void setTriggerHandlerMaps(SObjectType objectType) {
         triggerEventsToTriggerHandlers = new Map<String, List<MyTriggerSetting__mdt>>();
         handlerClassesToTriggerHandlers = new Map<String, List<MyTriggerSetting__mdt>>();
         for (MyTriggerSetting__mdt triggerSetting : getTriggerHandlerSettings(objectType)) {
@@ -639,7 +672,7 @@ global virtual class MyTriggers {
                 triggerEventsToTriggerHandlers.put(triggerSetting.Event__c, new List<MyTriggerSetting__mdt>());
             }
             triggerEventsToTriggerHandlers.get(triggerSetting.Event__c).add(triggerSetting);
-            String namespacePrefix = triggerSetting.ClassNamespacePrefix__c == null ? '' : triggerSetting.ClassNamespacePrefix__c;
+
             String classWithNamespaceKey = getClassNameWithNamespace(triggerSetting);
             if (!handlerClassesToTriggerHandlers.containsKey(classWithNamespaceKey)) {
                 handlerClassesToTriggerHandlers.put(classWithNamespaceKey, new List<MyTriggerSetting__mdt>());
@@ -648,36 +681,38 @@ global virtual class MyTriggers {
         }
     }
 
-    private static String getClassNameWithNamespace(MyTriggerSetting__mdt triggerHandlerSetting){
+    private static String getClassNameWithNamespace(MyTriggerSetting__mdt triggerHandlerSetting) {
         String namespacePrefix = String.isBlank(triggerHandlerSetting.ClassNamespacePrefix__c) ? '' : triggerHandlerSetting.ClassNamespacePrefix__c;
-        return (String.isBlank(namespacePrefix) ? '' :  namespacePrefix.toUpperCase() + '.') + triggerHandlerSetting.Class__c.toUpperCase();
+        return (String.isBlank(namespacePrefix) ? '' : namespacePrefix.toUpperCase() + '.') + triggerHandlerSetting.Class__c.toUpperCase();
     }
 
     /**
-     * Returns list of triggerHandlerSetting for sObjectType
-     * @param sObjectType
-     * @return triggerHandlerSetting for sObjectType
+     * Returns list of triggerHandlerSetting for SObjectType
+     * @param SObjectType
+     * @return triggerHandlerSetting for SObjectType
      */
-    private static List<MyTriggerSetting__mdt> getTriggerHandlerSettings(sObjectType objectType){
-        String sObjectName = objectType.getDescribe().getName();
+    private static List<MyTriggerSetting__mdt> getTriggerHandlerSettings(SObjectType objectType) {
+        String SObjectName = objectType.getDescribe().getName();
         List<MyTriggerSetting__mdt> triggerHandlerSettings;
 
         if (Test.isRunningTest() && triggerHandlerSettingMocks != null) {
             triggerHandlerSettings = triggerHandlerSettingMocks;
         } else {
             triggerHandlerSettings = new List<MyTriggerSetting__mdt>(
-                [SELECT DeveloperName, 
-				        ClassNamespacePrefix__c, 
-						Event__c, 
-						sObject__c,
-                                                sObject__r.QualifiedApiName, 
-						Class__c, 
-						Order__c
-                FROM MyTriggerSetting__mdt
-                WHERE sObject__r.QualifiedApiName = :sObjectName 
-                    AND Active__c = true
-                ORDER BY Order__c, 
-                         DeveloperName ASC]);
+            [
+                    SELECT DeveloperName,
+                            ClassNamespacePrefix__c,
+                            Event__c,
+                            SObject__c,
+                            SObject__r.QualifiedApiName,
+                            Class__c,
+                            Order__c
+                    FROM MyTriggerSetting__mdt
+                    WHERE SObject__r.QualifiedApiName = :SObjectName
+                    AND Active__c = TRUE
+                    ORDER BY Order__c,
+                            DeveloperName ASC
+            ]);
         }
 
         return triggerHandlerSettings;

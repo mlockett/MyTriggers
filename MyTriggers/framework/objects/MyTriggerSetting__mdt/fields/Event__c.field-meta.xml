@@ -13,6 +13,11 @@
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>
+                <fullName>All</fullName>
+                <default>false</default>
+                <label>All</label>
+            </value>
+            <value>
                 <fullName>BEFORE_INSERT</fullName>
                 <default>true</default>
                 <label>BeforeInsert</label>

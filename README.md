@@ -1,4 +1,7 @@
 # MyTriggers
+    This fork was created to allow a dev to have a class which will execute "All" trigger
+    handler methods in a single class. It's understood that this may not be the preferred way
+    of developing, but it allows for a more incremental approach to refactoring, and minimizes effort when the additional flexibility offered by MyTriggers is less important.
 
   Lightweight Custom Metadata driven Trigger Framework that scales to your needs. Extended from [TriggerX](https://github.com/se6wagner/TriggerX) by Seb Wagner, provided with <3 by appero.com
 
